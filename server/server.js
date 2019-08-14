@@ -1,31 +1,13 @@
-var express = require('express')
-var bodyParser = require('body-parser')
-var cors = require('cors')
 var os = require('os')
 var nodeStatic = require('node-static')
 var socketIO = require('socket.io')
 var http = require('http')
 
-const app = express()
-app.use(express.static('public'))
-app.use(bodyParser.json())
-app.use(cors())
-const port = process.env.PORT || 4000
-
 var fileServer = new (nodeStatic.Server)()
 var fileApp = http.createServer(function (req, res) {
   fileServer.serve(req, res)
-}).listen(8090)
+}).listen(process.env.PORT + 100 || 8090)
 
-app.listen(port, function () {
-  console.log('Listening on port ' + port)
-})
-
-const operatorRoutes = require('./expressRoutes/operatorRoutes')
-const userRoutes = require('./expressRoutes/userRoutes')
-
-app.use('/operators', operatorRoutes)
-app.use('/users', userRoutes)
 var io = socketIO.listen(fileApp)
 
 let rooms = []
