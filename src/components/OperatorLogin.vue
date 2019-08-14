@@ -12,7 +12,7 @@
       </div>
       <br/>
       <div class="form-group">
-        <router-link :to="{name: 'Room'}">
+        <router-link :to="{name: 'Room', params: {operatorId: form.name}}">
           <button class="btn btn-primary">Ready</button>
         </router-link>
       </div>
@@ -28,9 +28,6 @@ export default {
   },
   methods: {
     login () {
-      // const io = require('socket.io-client')
-      // var connect = io.connect('http://localhost:80/operator')
-      // connect.emit('conn', this.form)
     }
   }
 }

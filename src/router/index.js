@@ -26,8 +26,14 @@ export default new Router({
     },
     {
       name: 'Room',
-      path: '/room',
+      path: '/room/:operatorId',
       component: Room
+    },
+    {
+      name: 'RoomAsUser',
+      path: '/room',
+      component: Room,
+      props: {isUser: true}
     }
   ]
 })

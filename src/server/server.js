@@ -26,8 +26,10 @@ const userRoutes = require('./expressRoutes/userRoutes')
 
 app.use('/operators', operatorRoutes)
 app.use('/users', userRoutes)
-
 var io = socketIO.listen(fileApp)
+
+let rooms = []
+
 io.sockets.on('connection', function (socket) {
   // convenience function to log server messages on the client
   function log () {
@@ -37,31 +39,81 @@ io.sockets.on('connection', function (socket) {
   }
 
   socket.on('message', function (message) {
-    log('Client said: ', message)
-    // for a real app, would be room-only (not broadcast)
-    socket.broadcast.emit('message', message)
+    if (message.room) {
+      log('Client said to roommates: ', message)
+      io.sockets.in(message.room).emit('message', message.message)
+    } else {
+      log('Client said to everyone: ', message)
+      // for a real app, would be room-only (not broadcast)
+      socket.broadcast.emit('message', message)
+    }
   })
 
-  socket.on('create or join', function (room) {
-    log('Received request to create or join room ' + room)
+  socket.on('create', function (operatorId) {
+    log('Received request to create or join operatorId ' + operatorId)
+    rooms.push({id: operatorId, isFree: true, isReady: true})
+    socket.join(operatorId)
+    log('Client ID ' + socket.id + ' created operatorId ' + operatorId)
+    socket.emit('created', operatorId, socket.id)
+    socket.broadcast.emit('freeRoom', operatorId)
+  })
 
-    var clientsInRoom = io.sockets.adapter.rooms[room]
-    var numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0
-
-    log('Room ' + room + ' now has ' + numClients + ' client(s)')
-
-    if (numClients === 0) {
-      socket.join(room)
-      log('Client ID ' + socket.id + ' created room ' + room)
-      socket.emit('created', room, socket.id)
-    } else if (numClients === 1) {
-      log('Client ID ' + socket.id + ' joined room ' + room)
-      io.sockets.in(room).emit('join', room)
-      socket.join(room)
-      socket.emit('joined', room, socket.id)
-      io.sockets.in(room).emit('ready')
-    } else { // max two clients
+  socket.on('getFreeRoom', function () {
+    log('Received request to join room ')
+    const room = rooms.find(room => room && room.isFree && room.isReady)
+    if (room) {
+      log('Room ' + room.id + ' is available')
+      room.isFree = false
+      socket.emit('freeRoom', room.id)
+    } else {
+      log('No rooms available')
       socket.emit('full', room)
+    }
+  })
+
+  socket.on('join', function (roomId) {
+    log('Received request to join room ')
+    log(rooms)
+    const room = rooms.find(room => room && room.id === roomId)
+    if (room) {
+      room.isFree = false
+      log('Client ID ' + socket.id + ' joined room ' + room.id)
+      io.sockets.in(room.id).emit('join', room.id)
+      socket.join(room.id)
+      socket.emit('joined', room.id, socket.id)
+      io.sockets.in(room.id).emit('ready')
+    } else {
+      socket.emit('full', room.id)
+    }
+  })
+  socket.on('operatorLeave', function (roomId) {
+    log('Operator closing the room')
+    rooms = rooms.filter(room => room.id !== roomId)
+  })
+  socket.on('operatorIsReady', function (roomId) {
+    log('Operator is ready: ', roomId)
+    if (roomId) {
+      rooms = rooms.map(room => {
+        if (room.id !== roomId) {
+          room.isReady = true
+        }
+        return room
+      })
+    }
+  })
+  socket.on('userLeave', function (roomId) {
+    log('User is leaving the room')
+    if (roomId) {
+      console.log(rooms)
+      rooms = rooms.map(room => {
+        if (room.id === roomId) {
+          room.isFree = true
+          room.isReady = true
+        }
+        socket.emit('freeRoom', room.id)
+        return room;
+      })
+      console.log(rooms)
     }
   })
 
