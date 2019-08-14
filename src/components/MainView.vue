@@ -34,15 +34,7 @@
 export default {
   name: 'HelloWorld',
   data () {
-    this.axios.get('http://localhost:4000/operators').then((response) => {
-      this.operators = response.data.operators
-    })
-    this.axios.get('http://localhost:4000/users').then((response) => {
-      this.users = response.data.users
-    })
     return {
-      operators: [],
-      users: []
     }
   }
 }

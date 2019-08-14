@@ -25,7 +25,7 @@
 </template>
 <script>
 const io = require('socket.io-client')
-const socket = io.connect('http://localhost:' + (Number.parseInt(process.env.PORT) + 100))
+const socket = io.connect('http://localhost:' + (process.env.PORT || 8080))
 export default {
   mounted () {
     let self = this

@@ -4,25 +4,18 @@ var socketIO = require('socket.io')
 var http = require('http')
 
 
-var fileServer = new (nodeStatic.Server)()
-var fileApp = http.createServer(function (req, res) {
-  fileServer.serve(req, res)
-}).listen(Number.parseInt(process.env.PORT) + 100 || 8090)
-
-var io = socketIO.listen(fileApp)
-
 var path = require('path');
 var express = require('express');
 
 var app = express();
+const server = http.createServer(app)
+var io = socketIO(server)
+let port = process.env.PORT || 8080
 
 app.use(express.static(path.join(__dirname, 'dist')));
-let port = process.env.PORT || 8080
-console.log('port is ' + port)
-app.set('port', port);
 
-var server = app.listen(app.get('port'), function() {
-  console.log('listening on port ', server.address().port);
+app.get('/', function(req, res, next) {
+  res.sendFile(__dirname + './index.html')
 });
 
 
@@ -100,3 +93,5 @@ io.sockets.on('connection', function (socket) {
     }
   })
 })
+
+server.listen(port)

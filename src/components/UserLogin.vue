@@ -29,10 +29,6 @@ export default {
   },
   methods: {
     login () {
-      let uri = 'http://localhost:4000/users'
-      this.axios.post(uri, this.form).then((response) => {
-        console.log(response)
-      })
     }
   }
 }
