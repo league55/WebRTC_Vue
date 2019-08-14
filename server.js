@@ -7,7 +7,7 @@ var http = require('http')
 var fileServer = new (nodeStatic.Server)()
 var fileApp = http.createServer(function (req, res) {
   fileServer.serve(req, res)
-}).listen(process.env.PORT + 100 || 8090)
+}).listen(Number.parseInt(process.env.PORT) + 100 || 8090)
 
 var io = socketIO.listen(fileApp)
 
