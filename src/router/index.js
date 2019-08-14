@@ -3,7 +3,8 @@ import Router from 'vue-router'
 import HelloWorld from '@/components/MainView'
 import OperatorLogin from '@/components/OperatorLogin'
 import UserLogin from '@/components/UserLogin'
-import Room from '@/components/Room'
+import UserRoom from '@/components/ClientRoom'
+import OperatorRoom from '@/components/OperatorRoom'
 
 Vue.use(Router)
 
@@ -25,15 +26,15 @@ export default new Router({
       component: UserLogin
     },
     {
-      name: 'Room',
-      path: '/room/:operatorId',
-      component: Room
+      name: 'OperatorRoom',
+      path: '/room/:roomId',
+      component: OperatorRoom,
+      props: true
     },
     {
-      name: 'RoomAsUser',
+      name: 'UserRoom',
       path: '/room',
-      component: Room,
-      props: {isUser: true}
+      component: UserRoom
     }
   ]
 })

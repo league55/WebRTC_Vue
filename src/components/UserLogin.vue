@@ -12,7 +12,7 @@
       </div>
       <br/>
       <div class="form-group">
-        <router-link :to="{name: 'RoomAsUser'}">
+        <router-link :to="{name: 'UserRoom'}">
           <button class="btn btn-primary">Enter room</button>
         </router-link>
       </div>

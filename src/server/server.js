@@ -49,71 +49,44 @@ io.sockets.on('connection', function (socket) {
     }
   })
 
-  socket.on('create', function (operatorId) {
-    log('Received request to create or join operatorId ' + operatorId)
-    rooms.push({id: operatorId, isFree: true, isReady: true})
-    socket.join(operatorId)
-    log('Client ID ' + socket.id + ' created operatorId ' + operatorId)
-    socket.emit('created', operatorId, socket.id)
-    socket.broadcast.emit('freeRoom', operatorId)
+  socket.on('create', function () {
+    let roomId = socket.id + 'R'
+    log('Received request to create room ' + roomId)
+    rooms.push({id: roomId, inWork: false})
+    socket.join(roomId)
+    log('Client ' + roomId + ' created room ')
+    socket.emit('created', roomId)
+    socket.broadcast.emit('all_rooms', rooms)
   })
 
-  socket.on('getFreeRoom', function () {
-    log('Received request to join room ')
-    const room = rooms.find(room => room && room.isFree && room.isReady)
-    if (room) {
-      log('Room ' + room.id + ' is available')
-      room.isFree = false
-      socket.emit('freeRoom', room.id)
+  socket.on('get_rooms', function () {
+    log('Received request to retrieve rooms list ')
+    socket.emit('all_rooms', rooms)
+  })
+
+  socket.on('ask_join', function (roomId) {
+    log('Received request to join room ', roomId)
+    let found = rooms.find(r => r.id === roomId && !r.inWork)
+    if (found) {
+      found.inWork = true
+      found.opId = socket.id
+      log(rooms)
+      socket.emit('allow_join', roomId)
     } else {
-      log('No rooms available')
-      socket.emit('full', room)
+      socket.emit('room_busy', roomId)
     }
   })
 
-  socket.on('join', function (roomId) {
-    log('Received request to join room ')
-    log(rooms)
-    const room = rooms.find(room => room && room.id === roomId)
-    if (room) {
-      room.isFree = false
-      log('Client ID ' + socket.id + ' joined room ' + room.id)
-      io.sockets.in(room.id).emit('join', room.id)
-      socket.join(room.id)
-      socket.emit('joined', room.id, socket.id)
-      io.sockets.in(room.id).emit('ready')
+  socket.on('do_join', function (roomId) {
+    log('Received request to join room ', roomId)
+    let found = rooms.find(r => r.id === roomId && r.opId === socket.id)
+    if (found) {
+      found.inWork = true
+      log(rooms)
+      socket.join(roomId)
+      io.sockets.in(roomId).emit('operator_joined')
     } else {
-      socket.emit('full', room.id)
-    }
-  })
-  socket.on('operatorLeave', function (roomId) {
-    log('Operator closing the room')
-    rooms = rooms.filter(room => room.id !== roomId)
-  })
-  socket.on('operatorIsReady', function (roomId) {
-    log('Operator is ready: ', roomId)
-    if (roomId) {
-      rooms = rooms.map(room => {
-        if (room.id !== roomId) {
-          room.isReady = true
-        }
-        return room
-      })
-    }
-  })
-  socket.on('userLeave', function (roomId) {
-    log('User is leaving the room')
-    if (roomId) {
-      console.log(rooms)
-      rooms = rooms.map(room => {
-        if (room.id === roomId) {
-          room.isFree = true
-          room.isReady = true
-        }
-        socket.emit('freeRoom', room.id)
-        return room;
-      })
-      console.log(rooms)
+      socket.emit('room_busy', roomId)
     }
   })
 

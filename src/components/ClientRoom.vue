@@ -9,22 +9,17 @@
         <p>Local</p>
       </div>
     </div>
-    <div class="row">
-        <video id="remoteVideo" autoplay playsinline width="640" height="480" v-on:click.prevent="toggleSize"></video>
-        <video id="localVideo" autoplay playsinline width="320" height="240" v-on:click.prevent="toggleSize"></video>
+    <div class="row" v-show="operatorIsCalling">
+      <video id="remoteVideo" autoplay playsinline width="640" height="480" v-on:click.prevent="toggleSize"></video>
+      <video id="localVideo" autoplay playsinline width="320" height="240" v-on:click.prevent="toggleSize"></video>
+    </div>
+    <div class="row" v-show="!operatorIsCalling">
+      Waiting for operator to connect
     </div>
     <div>
       <br/>
-      <div>
-        <button id="callButton" v-on:click.prevent="rtc.doCall" class="btn btn-primary" v-if="isUser">Call</button>
-        <button id="startButton" v-on:click.prevent="doStream" class="btn btn-primary" v-else>Ready</button>
+      <div v-show="operatorIsCalling">
         <button id="hangupButton" v-on:click.prevent="rtc.hangup" class="btn btn-danger" ref="hangUp">Hang Up</button>
-        <button id="snapshotBtn" v-on:click.prevent="snapPhoto" class="btn">Snapshot</button>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-3">
-        <canvas id="snapshot" width="640" height="480"></canvas>
       </div>
     </div>
   </div>
@@ -34,21 +29,20 @@
 
 export default {
   name: 'Room',
+  beforeCreate () {
+    this.operatorIsCalling = false
+  },
   mounted () {
-    const callLogic = require('../rtc/rtc')
-    const toogleRemote = (mode) => {
-      document.getElementById('remoteVideo').style.display = mode
+    const callLogic = require('../rtc/rtc_host')
+    const toogleRemote = (operatorIsCalling) => {
+      this.operatorIsCalling = operatorIsCalling
     }
-    toogleRemote('none')
+
     var localVideo = document.querySelector('#localVideo')
     var remoteVideo = document.querySelector('#remoteVideo')
-    this.rtc = callLogic.prepareRtcRoom(localVideo, remoteVideo, this.isUser, this.$route.params.operatorId, () => toogleRemote('inline'))
-    this.rtc.ready()
+    this.rtc = callLogic.prepareRtcRoom(localVideo, remoteVideo, () => toogleRemote(true))
   },
   methods: {
-    doStream () {
-      this.rtc.readyOnceMore()
-    },
     snapPhoto () {
       var videoSnapsh = document.getElementById('localVideo')
       var photo = document.getElementById('snapshot')
@@ -66,7 +60,7 @@ export default {
     }
   },
   props: {
-    isUser: {
+    operatorIsCalling: {
       type: Boolean,
       default: false
     }

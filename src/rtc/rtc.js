@@ -1,9 +1,7 @@
 'use strict'
-const io = require('socket.io-client')
 
-function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCallBack) {
+function prepareRtcRoom (localVideo, remoteVideo, roomId, socket) {
   var isChannelReady = false
-  var isAdmin = false
   var isStarted = false
   var localStream
   var pc
@@ -15,57 +13,19 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
       'urls': 'stun:stun.l.google.com:19302'
     }]
   }
-  var room = adminId
-  // Could prompt for room name:
-  // room = prompt('Enter room name:');
 
-  var socket = io.connect('http://localhost:8090')
+  console.log('Joining to ' + roomId)
+  socket.emit('do_join', roomId)
 
-  if (!isUser) {
-    socket.emit('create', room)
-    console.log('Attempted to create room: ', room)
-  } else {
-    socket.emit('getFreeRoom')
-  }
-
-  socket.on('created', function (room) {
-    console.log('Created room ' + room)
-    isAdmin = true
-  })
-
-  socket.on('full', function (room) {
-    console.log('No free rooms')
-  })
-
-  if (isUser) {
-    socket.on('freeRoom', function (freeRoom) {
-      if (!room) {
-        socket.emit('join', freeRoom)
-        console.log('Joining to ' + freeRoom)
-        foundRoomsCallBack()
-      }
-    })
-  }
-
-  socket.on('join', function (room) {
-    console.log('Another peer made a request to join room ' + room)
-    console.log('This peer is the admin of room ' + room + '!')
-    foundRoomsCallBack()
+  socket.on('operator_joined', function (room) {
     isChannelReady = true
-  })
-
-  socket.on('joined', function (roomId) {
-    console.log('joined: ' + roomId)
-    isChannelReady = true
-    room = roomId
     ready()
+      .then(doCall)
   })
 
   socket.on('log', function (array) {
     console.log.apply(console, array)
   })
-
-  /// /////////////////////////////////////////////
 
   function sendMessage (message, room) {
     if (room) {
@@ -80,12 +40,7 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
   // This client receives a message
   socket.on('message', function (message) {
     console.log('Client received message:', message)
-    if (message === 'got user media') {
-      // maybeStart()
-    } else if (message.type === 'offer') {
-      if (isAdmin && !isStarted) {
-        maybeStart()
-      }
+    if (message.type === 'offer') {
       pc.setRemoteDescription(new RTCSessionDescription(message))
       doAnswer()
     } else if (message.type === 'answer' && isStarted) {
@@ -104,7 +59,7 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
   /// /////////////////////////////////////////////////
 
   function ready () {
-    navigator.mediaDevices.getUserMedia({
+    return navigator.mediaDevices.getUserMedia({
       audio: false,
       video: true
     })
@@ -114,18 +69,12 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
       })
   }
 
-  function readyOnceMore () {
-    socket.emit('operatorIsReady', room)
-  }
-
   function gotStream (stream) {
     console.log('Adding local stream.')
     localStream = stream
     localVideo.srcObject = stream
     sendMessage('got user media')
-    if (!isAdmin) {
-      maybeStart()
-    }
+    maybeStart()
   }
 
   var constraints = {
@@ -150,16 +99,12 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
       createPeerConnection()
       pc.addStream(localStream)
       isStarted = true
-      console.log('isAdmin', isAdmin)
-    // if (isAdmin) {
-    //   doCall()
-    // }
     }
   }
 
   window.onbeforeunload = function () {
-    if (room) {
-      sendMessage('bye', room)
+    if (roomId) {
+      sendMessage('bye', roomId)
     }
   }
 
@@ -201,22 +146,10 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
     pc.createOffer(setLocalAndSendMessage, handleCreateOfferError)
   }
 
-  function doAnswer () {
-    console.log('Sending answer to peer.')
-    pc.createAnswer().then(
-      setLocalAndSendMessage,
-      onCreateSessionDescriptionError
-    )
-  }
-
   function setLocalAndSendMessage (sessionDescription) {
     pc.setLocalDescription(sessionDescription)
     console.log('setLocalAndSendMessage sending message', sessionDescription)
     sendMessage(sessionDescription)
-  }
-
-  function onCreateSessionDescriptionError (error) {
-    console.trace('Failed to create session description: ' + error.toString())
   }
 
   function requestTurn (turnURL) {
@@ -248,6 +181,18 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
     }
   }
 
+  function doAnswer () {
+    console.log('Sending answer to peer.')
+    pc.createAnswer().then(
+      setLocalAndSendMessage,
+      onCreateSessionDescriptionError
+    )
+  }
+
+  function onCreateSessionDescriptionError (error) {
+    console.trace('Failed to create session description: ' + error.toString())
+  }
+
   function handleRemoteStreamAdded (event, remoteStream) {
     console.log('Remote stream added.')
     remoteStream = event.stream
@@ -260,17 +205,16 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
 
   function hangup () {
     console.log('Hanging up.')
-    if (room) {
-      sendMessage('bye', room)
+    if (roomId) {
+      sendMessage('bye', roomId)
       stop()
     }
   }
 
   function handleRemoteHangup () {
     console.log('Session terminated.')
-    socket.emit('userLeave', room)
+    sendMessage('bye', roomId)
     stop()
-    isAdmin = false
   }
 
   function stop () {
@@ -280,10 +224,7 @@ function prepareRtcRoom (localVideo, remoteVideo, isUser, adminId, foundRoomsCal
   }
 
   return {
-    hangup,
-    ready,
-    readyOnceMore,
-    doCall
+    hangup
   }
 }
 
