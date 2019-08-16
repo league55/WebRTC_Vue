@@ -25,7 +25,9 @@
 </template>
 <script>
 const io = require('socket.io-client')
-const socket = io.connect('http://localhost:' + (process.env.PORT || 8080))
+const host = process.ENV.HOST ? process.ENV.HOST : 'http://localhost:8080'
+const socket = io.connect(host)
+
 export default {
   mounted () {
     let self = this

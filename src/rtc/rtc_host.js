@@ -9,7 +9,8 @@ function prepareRtcRoom (localVideo, remoteVideo, operatorIsCallingCallback) {
   var remoteStream
   var turnReady
 
-  const socket = io.connect('http://localhost:' + (process.env.PORT || 8080))
+  const host = process.ENV.HOST ? process.ENV.HOST : 'http://localhost:8080'
+  const socket = io.connect(host)
 
   const pcConfig = {
     'iceServers': [{
